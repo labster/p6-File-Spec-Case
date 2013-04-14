@@ -1,0 +1,8 @@
+{
+  "name"        : "File::Spec::Case",
+  "version"     : "*",
+  "description" : "Check if your filesystem is case sensitive or case tolerant (insensitive)",
+  "author"      : "labster",
+  "depends"     : [ "File::Spec" ],
+  "source-url"  : "git://github.com/labster/p6-File-Spec-Case.git"
+}
