@@ -13,7 +13,7 @@ method always-case-tolerant  ($OS = $*OS) {
 method sensitive(|c)   { not self.tolerant( |c ) }
 method insensitive(|c) {     self.tolerant( |c ) }
 
-method tolerant (Str:D $path = $*CWD, :$no_write as Bool = False ) {
+method tolerant (Str:D $path = $*CWD, :$no_write = False ) {
 	return True if self.always-case-tolerant($*OS);
 
 	$path.IO.e or fail "Invalid path given";
@@ -44,11 +44,14 @@ method tolerant (Str:D $path = $*CWD, :$no_write as Bool = False ) {
 	# If we couldn't find anything suitable, try writing a test file
 	unless $no_write {
 		for @searchabledirs.grep({.IO.w}) -> $d {
-			my $filelc = File::Spec.catdir( $d, 'filespec.tmp');  #because 8.3 filesystems...
-			my $fileuc = File::Spec.catdir( $d, 'FILESPEC.TMP');
-			if $filelc.IO.e or $fileuc.IO.e { die "Wait, where did the file matching <alpha> come from??"; }
+			# we already know all of these dirs don't contain <alpha>,
+			# so pick a random 8.3 name to avoid race conditions
+			my $tmpname = "{('a'..'z').pick(8).join}.tmp";
+			my $filelc = File::Spec.catdir( $d, $tmpname   );  
+			my $fileuc = File::Spec.catdir( $d, $tmpname.uc);
 			try {
-				spurt $filelc, 'temporary test file for p6 File::Spec, feel free to delete';
+				spurt $filelc, :createonly,
+					'temporary test file for p6 File::Spec, feel free to delete';
 				my $result = $fileuc.IO.e;
 				unlink $filelc;
 				return $result;
