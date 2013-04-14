@@ -13,7 +13,7 @@ method always-case-tolerant  ($OS = $*OS) {
 method sensitive(|c)   { not self.tolerant( |c ) }
 method insensitive(|c) {     self.tolerant( |c ) }
 
-method tolerant (Str:D $path = $*CWD, $write_ok as Bool = True ) {
+method tolerant (Str:D $path = $*CWD, :$no_write as Bool = False ) {
 	return True if self.always-case-tolerant($*OS);
 
 	$path.IO.e or fail "Invalid path given";
@@ -42,7 +42,7 @@ method tolerant (Str:D $path = $*CWD, $write_ok as Bool = True ) {
 	}
 
 	# If we couldn't find anything suitable, try writing a test file
-	if $write_ok {
+	unless $no_write {
 		for @searchabledirs.grep({.IO.w}) -> $d {
 			my $filelc = File::Spec.catdir( $d, 'filespec.tmp');  #because 8.3 filesystems...
 			my $fileuc = File::Spec.catdir( $d, 'FILESPEC.TMP');
