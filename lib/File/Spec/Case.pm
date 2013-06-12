@@ -13,7 +13,7 @@ method always-case-tolerant  ($OS = $*OS) {
 method sensitive(|c)   { not self.tolerant( |c ) }
 method insensitive(|c) {     self.tolerant( |c ) }
 
-method tolerant (Str:D $path = $*CWD, :$no_write = False ) {
+method tolerant (Str:D $path = ~$*CWD, :$no_write = False ) {
 	return True if self.always-case-tolerant($*OS);
 
 	$path.IO.e or fail "Invalid path given";
