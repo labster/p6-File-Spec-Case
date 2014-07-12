@@ -16,47 +16,35 @@ method tolerant (Cool:D $path is copy = ~$*CWD, :$no_write = False ) {
 
     $path = $path.path;
 	$path.e or fail "Invalid path given";
-	my @dirs = IO::Spec.splitdir(IO::Spec.rel2abs($path));
-	my @searchabledirs;
-
-	# try looking at each component of $path to see if has letters
-	loop (my $i = +@dirs; $i--; $i <= 0) {
-		my $p = IO::Spec.catdir(@dirs[0..$i]);
-		push(@searchabledirs, $p) if $p.IO.d;
-
-		last if $p.IO.l;
-		next unless @dirs[$i] ~~ /<+alpha-[_]>/;
-
-		return self!case-tolerant-folder: @dirs[0..($i-1)], @dirs[$i];
+	
+	if $path.f and $path.basename ~~ /<+upper+lower-[\x00DF]>/ {
+	    return self!case-tolerant-file($path);
 	}
 
-	# If nothing in $path contains a letter, search for nearby files, including up the tree
-	# This doesn't actually look recursively; don't want to add File::Find as a dependency
-	for @searchabledirs -> $d {
-		my @filelist = dir($d).grep(/<+alpha-[_]>/);
-		next unless @filelist.elems;
-
-		# anything with <alpha> will do
-		return self!case-tolerant-folder: $d, @filelist[0];
-	}
-
-	# If we couldn't find anything suitable, try writing a test file
-	unless $no_write {
-		for @searchabledirs.grep({.IO.w}) -> $d {
-			# we already know all of these dirs don't contain <alpha>,
-			# so pick a random 8.3 name to avoid race conditions
-			my $tmpname = "{('a'..'z').pick(8).join}.tmp";
-			my $filelc = IO::Spec.catdir( $d, $tmpname   );  
-			my $fileuc = IO::Spec.catdir( $d, $tmpname.uc);
-			try {
-				spurt $filelc, :createonly,
-					'temporary test file for p6 IO::Spec, feel free to delete';
-				my $result = $fileuc.IO.e;
-				unlink $filelc;
-				return $result;
-			}
-			CATCH { unlink $filelc if $filelc.IO.e; }
-		}
+    # try looking at everything in the current dir for letters
+	$path = $path.parent unless $path.d;
+    for $path.contents -> $fn {
+        if $fn.basename ~~ /<+upper+lower-[\x00DF]>/ {
+            return self!case-tolerant-file($path);
+        }
+    }
+	
+	
+	#if nothing in $path contains a letter, try writing a test file	
+	unless $no_write and !$path.w {
+        # we already know this dir don't contain <lower+upper>,
+        # so pick a random 8.3 name to avoid race conditions
+        my $tmpname = "{('a'..'z').pick(8).join}.tmp";
+        my $filelc = $path.child($tmpname);  
+        my $fileuc = $path.child($tmpname.uc);
+        try {
+            $filelc.spurt: :createonly,
+                'temporary test file for p6 IO::Spec, feel free to delete';
+            my $result = $fileuc.e;
+            unlink $filelc;
+            return $result;
+        }
+        CATCH { unlink $filelc if $filelc.e; }
 	}
 
 	# Okay, we don't have write access... give up and just return the platform default
@@ -64,10 +52,13 @@ method tolerant (Cool:D $path is copy = ~$*CWD, :$no_write = False ) {
 
 }
 
-method !case-tolerant-folder( \updirs, $curdir ) {
-	return False unless IO::Spec.catdir( |updirs, $curdir.uc).IO.e
-			 && IO::Spec.catdir( |updirs, $curdir.lc).IO.e;
-	return +dir(IO::Spec.catdir(|updirs)).grep(/:i ^ $curdir $/) <= 1;
+method !case-tolerant-file( $path ) {
+    my ($volume, $directory, $basename) = $path.parts<volume directory basename>;
+    
+    return False unless
+           IO::Path.new( :$volume, :$directory, basename => $basename.uc ).e
+        && IO::Path.new( :$volume, :$directory, basename => $basename.lc ).e;
+    return +$path.parent.contents».basename.grep(/:i ^ {$path.basename} $/) <= 1;
 	# this could be faster by comparing inodes of .uc and .lc
 	# but we can't guarantee POSIXness of every platform that calls this
 }
