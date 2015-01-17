@@ -14,7 +14,7 @@ method insensitive(|c) {     self.tolerant( |c ) }
 method tolerant (Cool:D $path is copy = ~$*CWD, :$no_write = False ) {
 	return True if self.always-case-tolerant($*OS);
 
-    $path = $path.path;
+    $path = $path.IO;
 	$path.e or fail "Invalid path given";
 	
 	if $path.f and $path.basename ~~ /<+upper+lower-[\x00DF]>/ {
@@ -23,7 +23,7 @@ method tolerant (Cool:D $path is copy = ~$*CWD, :$no_write = False ) {
 
     # try looking at everything in the current dir for letters
 	$path = $path.parent unless $path.d;
-    for $path.contents -> $fn {
+    for $path.dir -> $fn {
         if $fn.basename ~~ /<+upper+lower-[\x00DF]>/ {
             return self!case-tolerant-file($path);
         }
@@ -53,11 +53,11 @@ method tolerant (Cool:D $path is copy = ~$*CWD, :$no_write = False ) {
 }
 
 method !case-tolerant-file( $path ) {
-    my ($volume, $directory, $basename) = $path.parts<volume directory basename>;
+    my ($volume, $dirname, $basename) = $path.parts<volume dirname basename>;
     
     return False unless
-           IO::Path.new( :$volume, :$directory, basename => $basename.uc ).e
-        && IO::Path.new( :$volume, :$directory, basename => $basename.lc ).e;
+           IO::Path.new( :$volume, :$dirname, basename => $basename.uc ).e
+        && IO::Path.new( :$volume, :$dirname, basename => $basename.lc ).e;
     return +$path.parent.contents».basename.grep(/:i ^ {$path.basename} $/) <= 1;
 	# this could be faster by comparing inodes of .uc and .lc
 	# but we can't guarantee POSIXness of every platform that calls this

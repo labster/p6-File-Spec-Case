@@ -4,7 +4,7 @@ use File::Spec::Case;
 
 plan 5;
 
-if (cwd.IO ~~ :w) {
+if ($*CWD.IO ~~ :w) {
 	"casetol.tmp".IO.e or spurt "casetol.tmp", "temporary test file, delete after reading";
 	is File::Spec::Case.tolerant("casetol.tmp"), so "CASETOL.TMP".IO.e,
 		"tolerant is {so "CASETOL.TMP".IO.e} in cwd";
