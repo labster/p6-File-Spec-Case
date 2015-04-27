@@ -58,7 +58,7 @@ method !case-tolerant-file( $path ) {
     return False unless
            IO::Path.new( :$volume, :$dirname, basename => $basename.uc ).e
         && IO::Path.new( :$volume, :$dirname, basename => $basename.lc ).e;
-    return +$path.parent.contents».basename.grep(/:i ^ {$path.basename} $/) <= 1;
+    return +$path.parent.dir».basename.grep(/:i ^ {$path.basename} $/) <= 1;
 	# this could be faster by comparing inodes of .uc and .lc
 	# but we can't guarantee POSIXness of every platform that calls this
 }
